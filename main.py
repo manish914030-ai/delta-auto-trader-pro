@@ -1,6 +1,8 @@
 from flask import Flask
 import threading
 import time
+import os
+import pandas as pd
 
 from exchange import get_exchange
 from strategy import check_signal
@@ -29,9 +31,12 @@ def bot_loop():
         try:
             for symbol in symbols:
                 try:
-                    ohlcv = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=200)
+                    ohlcv = exchange.fetch_ohlcv(
+                        symbol,
+                        timeframe=timeframe,
+                        limit=200
+                    )
 
-                    import pandas as pd
                     df = pd.DataFrame(
                         ohlcv,
                         columns=[
@@ -40,8 +45,8 @@ def bot_loop():
                             "high",
                             "low",
                             "close",
-                            "volume",
-                        ],
+                            "volume"
+                        ]
                     )
 
                     signal = check_signal(df)
@@ -49,19 +54,26 @@ def bot_loop():
                     print(f"{symbol} -> {signal}")
 
                     if signal != "WAIT":
-                        send_message(f"📢 {symbol}\nSignal : {signal}")
+                        send_message(
+                            f"📢 <b>{symbol}</b>\n"
+                            f"Signal : <b>{signal}</b>"
+                        )
 
                 except Exception as e:
-                    print(f"{symbol} Error : {e}")
+                    print(f"{symbol} Error: {e}")
 
             time.sleep(60)
 
         except Exception as e:
-            print(e)
+            print(f"Bot Error: {e}")
             time.sleep(60)
 
 
 threading.Thread(target=bot_loop, daemon=True).start()
 
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000))
+    )
