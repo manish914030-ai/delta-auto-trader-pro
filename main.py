@@ -1,111 +1,67 @@
+from flask import Flask
+import threading
 import time
-import pandas as pd
 
-from config import SYMBOLS, ENTRY_TIMEFRAME
 from exchange import get_exchange
 from strategy import check_signal
-from trade_manager import TradeManager
 from telegram_bot import send_message
-from risk_manager import RiskManager
 
-exchange = get_exchange()
-trade_manager = TradeManager()
-risk_manager = RiskManager()
+app = Flask(__name__)
 
 
-def get_candles(symbol, timeframe, limit=200):
-    ohlcv = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
-
-    df = pd.DataFrame(
-        ohlcv,
-        columns=[
-            "timestamp",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume"
-        ]
-    )
-
-    return df
+@app.route("/")
+def home():
+    return "Delta Auto Trader Pro Running ✅"
 
 
-def run():
+def bot_loop():
+    exchange = get_exchange()
 
-    send_message("🤖 Delta Auto Trader Started")
+    symbols = [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT"
+    ]
+
+    timeframe = "5m"
 
     while True:
-
         try:
-
-            balance = exchange.fetch_balance()
-
-            usdt_balance = balance["USDT"]["free"]
-
-            if not risk_manager.can_trade(usdt_balance):
-                send_message("❌ Daily Loss Limit Reached")
-                break
-
-            for symbol in SYMBOLS:
-
+            for symbol in symbols:
                 try:
+                    ohlcv = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=200)
 
-                    df = get_candles(symbol, ENTRY_TIMEFRAME)
+                    import pandas as pd
+                    df = pd.DataFrame(
+                        ohlcv,
+                        columns=[
+                            "timestamp",
+                            "open",
+                            "high",
+                            "low",
+                            "close",
+                            "volume",
+                        ],
+                    )
 
                     signal = check_signal(df)
 
-                    print(symbol, signal)
+                    print(f"{symbol} -> {signal}")
 
-                    if signal == "WAIT":
-                        continue
-
-                    price = df.iloc[-1]["close"]
-                    atr = df.iloc[-1]["ATR"]
-
-                    stop_distance = atr * 2
-
-                    qty = risk_manager.calculate_position_size(
-                        usdt_balance,
-                        price,
-                        price - stop_distance if signal == "BUY" else price + stop_distance
-                    )
-
-                    if qty <= 0:
-                        continue
-
-                    if signal == "BUY":
-
-                        trade_manager.buy(symbol, qty)
-
-                    elif signal == "SELL":
-
-                        trade_manager.sell(symbol, qty)
-
-                    send_message(
-                        f"""
-<b>{signal} EXECUTED</b>
-
-Symbol : {symbol}
-Price : {price}
-Qty : {qty}
-"""
-                    )
+                    if signal != "WAIT":
+                        send_message(f"📢 {symbol}\nSignal : {signal}")
 
                 except Exception as e:
-
-                    print(symbol, e)
+                    print(f"{symbol} Error : {e}")
 
             time.sleep(60)
 
         except Exception as e:
-
             print(e)
-
-            send_message(f"Bot Error\n{e}")
-
             time.sleep(60)
 
 
+threading.Thread(target=bot_loop, daemon=True).start()
+
 if __name__ == "__main__":
-    run()
+    app.run(host="0.0.0.0", port=10000)
