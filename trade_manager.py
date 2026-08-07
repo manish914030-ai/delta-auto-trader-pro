@@ -1,33 +1,52 @@
-from exchange import get_exchange
+from risk_manager import risk_manager
 
 
 class TradeManager:
 
     def __init__(self):
-        self.exchange = get_exchange()
+        self.active_trade = None
 
-    def buy(self, symbol, quantity):
-        try:
-            order = self.exchange.create_market_buy_order(
-                symbol,
-                quantity
-            )
-            print(f"BUY Order Executed: {order}")
-            return order
+    def has_open_trade(self):
+        return self.active_trade is not None
 
-        except Exception as e:
-            print(f"BUY Error: {e}")
+    def open_trade(
+        self,
+        symbol,
+        side,
+        balance,
+        entry_price,
+        stop_loss,
+    ):
+
+        if self.has_open_trade():
             return None
 
-    def sell(self, symbol, quantity):
-        try:
-            order = self.exchange.create_market_sell_order(
-                symbol,
-                quantity
-            )
-            print(f"SELL Order Executed: {order}")
-            return order
+        qty = risk_manager.calculate_position_size(
+            balance,
+            entry_price,
+            stop_loss,
+        )
 
-        except Exception as e:
-            print(f"SELL Error: {e}")
+        if qty <= 0:
             return None
+
+        self.active_trade = {
+            "symbol": symbol,
+            "side": side,
+            "entry": entry_price,
+            "stop_loss": stop_loss,
+            "qty": qty,
+        }
+
+        return self.active_trade
+
+    def close_trade(self):
+
+        self.active_trade = None
+
+    def get_trade(self):
+
+        return self.active_trade
+
+
+trade_manager = TradeManager()
