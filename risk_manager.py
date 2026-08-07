@@ -1,31 +1,49 @@
-from config import RISK_PER_TRADE, MAX_DAILY_LOSS
+from config import (
+    RISK_PER_TRADE,
+    MAX_DAILY_LOSS,
+    LEVERAGE
+)
 
 
 class RiskManager:
-    def __init__(self):
-        self.daily_loss = 0.0
 
-    def calculate_position_size(self, balance, entry_price, stop_loss_price):
-        risk_amount = balance * RISK_PER_TRADE
+    def __init__(self):
+        self.daily_loss = 0
+
+    def can_trade(self):
+
+        if self.daily_loss >= MAX_DAILY_LOSS:
+            return False
+
+        return True
+
+    def calculate_position_size(
+        self,
+        balance,
+        entry_price,
+        stop_loss_price
+    ):
+
+        risk_amount = balance * (RISK_PER_TRADE / 100)
 
         stop_distance = abs(entry_price - stop_loss_price)
 
         if stop_distance <= 0:
             return 0
 
-        quantity = risk_amount / stop_distance
-        return round(quantity, 6)
+        qty = risk_amount / stop_distance
 
-    def can_trade(self, balance):
-        max_loss = balance * MAX_DAILY_LOSS
+        qty = qty * LEVERAGE
 
-        if self.daily_loss >= max_loss:
-            return False
+        return round(qty, 4)
 
-        return True
+    def update_daily_loss(self, loss):
 
-    def add_loss(self, loss_amount):
-        self.daily_loss += abs(loss_amount)
+        self.daily_loss += loss
 
     def reset_daily_loss(self):
-        self.daily_loss = 0.0
+
+        self.daily_loss = 0
+
+
+risk_manager = RiskManager()
