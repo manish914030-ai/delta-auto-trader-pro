@@ -17,6 +17,11 @@ def home():
 
 
 def bot_loop():
+
+    print("========== BOT STARTED ==========")
+
+    send_message("✅ Delta Auto Trader Pro Started Successfully")
+
     exchange = get_exchange()
 
     symbols = [
@@ -28,9 +33,15 @@ def bot_loop():
     timeframe = "5m"
 
     while True:
+
         try:
+
             for symbol in symbols:
+
                 try:
+
+                    print(f"Checking {symbol}")
+
                     ohlcv = exchange.fetch_ohlcv(
                         symbol,
                         timeframe=timeframe,
@@ -51,28 +62,34 @@ def bot_loop():
 
                     signal = check_signal(df)
 
-                    print(f"{symbol} -> {signal}")
+                    print(f"{symbol} Signal : {signal}")
 
                     if signal != "WAIT":
+
                         send_message(
                             f"📢 <b>{symbol}</b>\n"
                             f"Signal : <b>{signal}</b>"
                         )
 
                 except Exception as e:
-                    print(f"{symbol} Error: {e}")
+
+                    print(f"{symbol} ERROR : {e}")
 
             time.sleep(60)
 
         except Exception as e:
-            print(f"Bot Error: {e}")
+
+            print(f"BOT ERROR : {e}")
             time.sleep(60)
 
 
-threading.Thread(target=bot_loop, daemon=True).start()
-
-
 if __name__ == "__main__":
+
+    threading.Thread(
+        target=bot_loop,
+        daemon=True
+    ).start()
+
     app.run(
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 10000))
