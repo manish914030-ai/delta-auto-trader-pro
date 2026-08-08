@@ -65,16 +65,12 @@ def atr(df, period=14):
 
     previous_close = close.shift(1)
 
-    high_low = high - low
-    high_close = (high - previous_close).abs()
-    low_close = (low - previous_close).abs()
+    tr1 = high - low
+    tr2 = (high - previous_close).abs()
+    tr3 = (low - previous_close).abs()
 
     true_range = pd.concat(
-        [
-            high_low,
-            high_close,
-            low_close
-        ],
+        [tr1, tr2, tr3],
         axis=1
     ).max(axis=1)
 
@@ -90,26 +86,24 @@ def atr(df, period=14):
 
 def add_indicators(df):
 
-    # Deep copy — prevents chained-assignment problems
+    # Always create a completely independent DataFrame
     data = df.copy(deep=True)
 
-    # Clean numeric columns
-    numeric_columns = [
+    # Make OHLCV numeric
+    for column in [
         "open",
         "high",
         "low",
         "close",
         "volume"
-    ]
-
-    for column in numeric_columns:
+    ]:
         if column in data.columns:
             data.loc[:, column] = pd.to_numeric(
                 data[column],
                 errors="coerce"
             )
 
-    # Calculate indicators first
+    # EMA
     ema20_value = ema(
         data["close"],
         20
@@ -120,22 +114,22 @@ def add_indicators(df):
         50
     )
 
+    # RSI
     rsi_value = rsi(
         data["close"],
         14
     )
 
+    # ATR
     atr_value = atr(
         data,
         14
     )
 
-    # Add columns using assign
-    data = data.assign(
-        EMA20=ema20_value,
-        EMA50=ema50_value,
-        RSI=rsi_value,
-        ATR=atr_value
-    )
+    # Use .loc to avoid chained-assignment warnings
+    data.loc[:, "EMA20"] = ema20_value
+    data.loc[:, "EMA50"] = ema50_value
+    data.loc[:, "RSI"] = rsi_value
+    data.loc[:, "ATR"] = atr_value
 
     return data
